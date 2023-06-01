@@ -1,5 +1,5 @@
-N_MS      = 2
-C_SAMPLES = 2000
+N_MILLISEC = 2
+C_SAMPLES  = 2000
 
 function sleep_kernel(ncycles)
     start = CUDA.clock(UInt64)
@@ -37,7 +37,7 @@ function run_c_benchmarks(lib,nsamples,ncycles)
 end
 
 clock_rate = CUDA.attribute(device(),CUDA.DEVICE_ATTRIBUTE_CLOCK_RATE)
-ncycles    = N_MS*clock_rate
+ncycles    = N_MILLISEC*clock_rate
 
 
 group = run_julia_benchmarks(ncycles)

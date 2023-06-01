@@ -1,4 +1,4 @@
-NBYTES    = 10^8
+N_BYTES   = 10^8
 C_SAMPLES = 500
 
 function memcopy_kernel!(dst,src)
