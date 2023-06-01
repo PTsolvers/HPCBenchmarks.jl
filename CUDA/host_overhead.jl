@@ -9,16 +9,6 @@ function sleep_kernel(ncycles)
     return
 end
 
-function run_c_benchmark(lib,nsamples,ncycles)
-    trial = make_c_trial(nsamples)
-
-    sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
-    @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
-    CUDA.device_reset!()
-
-    return trial
-end
-
 function run_julia_benchmarks(ncycles)
     suite = BenchmarkGroup()
 
@@ -36,6 +26,16 @@ function run_julia_benchmarks(ncycles)
     return run(suite)
 end
 
+function run_c_benchmarks(lib,nsamples,ncycles)
+    trial = make_c_trial(nsamples)
+
+    sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
+    @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
+    CUDA.device_reset!()
+
+    return trial
+end
+
 clock_rate = CUDA.attribute(device(),CUDA.DEVICE_ATTRIBUTE_CLOCK_RATE)
 ncycles    = N_MS*clock_rate
 
@@ -47,7 +47,7 @@ libext  = Sys.iswindows() ? "dll" : "so"
 libname = "host_overhead." * libext
 run(`nvcc -O3 -o $libname --shared host_overhead.cu`)
 Libdl.dlopen("./$libname") do lib
-    group["reference"] = run_c_benchmark(lib,C_SAMPLES,ncycles)
+    group["reference"] = run_c_benchmarks(lib,C_SAMPLES,ncycles)
 end
 
 RESULTS["host-overhead"] = group
