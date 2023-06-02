@@ -15,30 +15,36 @@ function run_julia_benchmarks(nbytes)
     nthreads = 256
     nblocks  = cld(length(dst),nthreads)
 
-    @benchmark begin
+    bm = @benchmark begin
         CUDA.@sync @cuda blocks=$nblocks threads=$nthreads memcopy_kernel!($dst,$src)
     end
+
+    CUDA.unsafe_free!(dst)
+    CUDA.unsafe_free!(src)
+
+    return bm
 end
 
 function run_c_benchmarks(lib,nsamples,nbytes)
     trial = make_c_trial(nsamples)
 
+    CUDA.reclaim()
+
     sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
     @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,nbytes::Cint)::Cvoid
-    CUDA.device_reset!()
 
     return trial
 end
 
 group = BenchmarkGroup()
-group["julia"] = run_julia_benchmarks(NBYTES)
+group["julia"] = run_julia_benchmarks(N_BYTES)
 
 # Add baseline C benchmark
 libext  = Sys.iswindows() ? "dll" : "so"
 libname = "memcopy." * libext
 run(`nvcc -O3 -o $libname --shared memcopy.cu`)
 Libdl.dlopen("./$libname") do lib
-    group["reference"] = run_c_benchmarks(lib,C_SAMPLES,NBYTES)
+    group["reference"] = run_c_benchmarks(lib,C_SAMPLES,N_BYTES)
 end
 
 RESULTS["memcopy"] = group

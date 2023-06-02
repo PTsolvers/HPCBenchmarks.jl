@@ -20,8 +20,6 @@ __global__ void sleep_kernel(const int64_t ncycles) {
 
 extern "C" EXPORT_API void run_benchmark(double *times, const int nsamples,
                                          const int64_t ncycles) {
-  cudaDeviceReset();
-
   cudaStream_t stream;
   cudaStreamCreate(&stream);
 

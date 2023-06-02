@@ -29,16 +29,16 @@ end
 function run_c_benchmarks(lib,nsamples,ncycles)
     trial = make_c_trial(nsamples)
 
+    CUDA.reclaim()
+
     sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
     @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
-    CUDA.device_reset!()
 
     return trial
 end
 
 clock_rate = CUDA.attribute(device(),CUDA.DEVICE_ATTRIBUTE_CLOCK_RATE)
 ncycles    = N_MILLISEC*clock_rate
-
 
 group = run_julia_benchmarks(ncycles)
 

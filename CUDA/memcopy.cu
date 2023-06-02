@@ -20,8 +20,6 @@ __global__ void memcopy_kernel(uint8_t *dst, const uint8_t *src, const int n) {
 
 extern "C" EXPORT_API void run_benchmark(double *times, const int nsamples,
                                          const int n) {
-  cudaDeviceReset();
-
   uint8_t *dst, *src;
   cudaMalloc(&dst, n);
   cudaMalloc(&src, n);

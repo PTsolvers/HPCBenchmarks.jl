@@ -14,3 +14,6 @@ include("host_overhead.jl")
 
 @info "memcopy"
 include("memcopy.jl")
+
+@info "diffusion"
+include("diffusion_2d.jl")
