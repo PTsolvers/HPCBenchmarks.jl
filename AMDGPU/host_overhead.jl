@@ -29,9 +29,6 @@ end
 function run_c_benchmarks(lib,nsamples,ncycles)
     trial = make_c_trial(nsamples)
 
-    CUDA.reclaim()
-
-    sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
     @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
 
     return trial
@@ -45,7 +42,7 @@ group = run_julia_benchmarks(ncycles)
 # Add baseline C benchmark
 libext  = Sys.iswindows() ? "dll" : "so"
 libname = "host_overhead." * libext
-run(`nvcc -O3 -o $libname --shared host_overhead.cu`)
+run(`hipcc -O3 -o $libname --shared -fPIC host_overhead.cu`)
 Libdl.dlopen("./$libname") do lib
     group["reference"] = run_c_benchmarks(lib,C_SAMPLES,ncycles)
 end

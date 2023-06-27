@@ -31,7 +31,7 @@ function run_c_benchmarks(lib,nsamples,ncycles)
 
     CUDA.reclaim()
 
-    sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
+    sym = Libdl.dlsym(lib,:run_benchmark)
     @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
 
     return trial

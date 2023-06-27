@@ -1,4 +1,5 @@
-#include <cuda.h>
+#include "hip/hip_runtime.h"
+#include <hip/hip_runtime.h>
 #include <stdint.h>
 
 #include <chrono>
@@ -11,7 +12,7 @@ using nano_double = duration<double, std::nano>;
 #define EXPORT_API
 #endif
 
-__global__ void memcopy_kernel(uint8_t *dst, const uint8_t *src, const int n) {
+__global__ void memcopy_kernel(double *dst, const double *src, const int n) {
   int ix = blockIdx.x * blockDim.x + threadIdx.x;
   if (ix < n) {
     dst[ix] = src[ix];
@@ -20,27 +21,27 @@ __global__ void memcopy_kernel(uint8_t *dst, const uint8_t *src, const int n) {
 
 extern "C" EXPORT_API void run_benchmark(double *times, const int nsamples,
                                          const int n) {
-  uint8_t *dst, *src;
-  cudaMalloc(&dst, n);
-  cudaMalloc(&src, n);
+  double *dst, *src;
+  hipMalloc(&dst, n * sizeof(double));
+  hipMalloc(&src, n * sizeof(double));
 
-  cudaStream_t stream;
-  cudaStreamCreate(&stream);
+  hipStream_t stream;
+  hipStreamCreate(&stream);
 
   int nthreads = 256;
   int nblocks = (n + nthreads - 1) / nthreads;
 
   for (int isample = 0; isample < nsamples; ++isample) {
     auto timer = high_resolution_clock::now();
-    memcopy_kernel<<<nblocks, nthreads, 0, stream>>>(dst, src, n);
-    cudaStreamSynchronize(stream);
+    hipLaunchKernelGGL(memcopy_kernel, nblocks, nthreads, 0, stream, dst, src, n);
+    hipStreamSynchronize(stream);
     auto elapsed = high_resolution_clock::now() - timer;
     auto time_total = duration_cast<nano_double>(elapsed).count();
     times[isample] = time_total;
   }
 
-  cudaFree(src);
-  cudaFree(dst);
+  hipFree(src);
+  hipFree(dst);
 
-  cudaStreamDestroy(stream);
+  hipStreamDestroy(stream);
 }

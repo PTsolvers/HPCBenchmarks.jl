@@ -1,50 +1,58 @@
-N_BYTES   = 10^8
-C_SAMPLES = 500
+INPUTS["memcopy"] = (
+    n_range   = 2 .^ (16:2:28),
+    c_samples = 2000,
+)
 
 function memcopy_kernel!(dst,src)
-    ix = (blockIdx().x-1i32)*blockDim().x + threadIdx().x
+    ix = (workgroupIdx().x-1)*workgroupDim().x + workitemIdx().x
     if ix <= length(dst)
         @inbounds dst[ix] = src[ix]
     end
     return
 end
 
-function run_julia_benchmarks(nbytes)
-    dst = CuArray{UInt8}(undef,nbytes)
-    src = CuArray{UInt8}(undef,nbytes)
+function run_julia_benchmarks(n)
+    dst      = ROCArray{Float64}(undef,n)
+    src      = ROCArray{Float64}(undef,n)
     nthreads = 256
     nblocks  = cld(length(dst),nthreads)
 
     bm = @benchmark begin
-        CUDA.@sync @cuda blocks=$nblocks threads=$nthreads memcopy_kernel!($dst,$src)
+        @roc gridsize=$nblocks groupsize=$nthreads memcopy_kernel!($dst,$src)
+        AMDGPU.synchronize()
     end
 
-    CUDA.unsafe_free!(dst)
-    CUDA.unsafe_free!(src)
+    AMDGPU.unsafe_free!(dst)
+    AMDGPU.unsafe_free!(src)
 
     return bm
 end
 
-function run_c_benchmarks(lib,nsamples,nbytes)
+function run_c_benchmarks(lib,nsamples,n)
     trial = make_c_trial(nsamples)
 
-    CUDA.reclaim()
-
-    sym = CUDA.Libdl.dlsym(lib,:run_benchmark)
-    @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,nbytes::Cint)::Cvoid
+    sym = Libdl.dlsym(lib,:run_benchmark)
+    @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,n::Cint)::Cvoid
 
     return trial
 end
 
 group = BenchmarkGroup()
-group["julia"] = run_julia_benchmarks(N_BYTES)
 
-# Add baseline C benchmark
+# Compile C benchmark
 libext  = Sys.iswindows() ? "dll" : "so"
 libname = "memcopy." * libext
-run(`nvcc -O3 -o $libname --shared memcopy.cu`)
+run(`hipcc -O3 -o $libname --shared -fPIC memcopy.cu`)
+
 Libdl.dlopen("./$libname") do lib
-    group["reference"] = run_c_benchmarks(lib,C_SAMPLES,N_BYTES)
+    for N in INPUTS["memcopy"].n_range
+        @info "N = $N"
+        group_n = BenchmarkGroup()
+        group_n["julia"]     = run_julia_benchmarks(N)
+        group_n["reference"] = run_c_benchmarks(lib,INPUTS["memcopy"].c_samples,N)
+        group[N] = group_n
+        display(group_n)
+    end
 end
 
 RESULTS["memcopy"] = group

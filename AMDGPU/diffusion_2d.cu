@@ -1,4 +1,5 @@
-#include <cuda.h>
+#include "hip/hip_runtime.h"
+#include <hip/hip_runtime.h>
 #include <stdint.h>
 
 #include <chrono>
@@ -25,28 +26,28 @@ __global__ void diffusion_kernel(double *_A_new, const double *_A, const int n, 
 
 extern "C" EXPORT_API void run_benchmark(double *times, const int nsamples, const int n) {
   double *A_new, *A;
-  cudaMalloc(&A_new, (n - 2) * (n - 2) * sizeof(double));
-  cudaMalloc(&A, n * n * sizeof(double));
+  hipMalloc(&A_new, (n - 2) * (n - 2) * sizeof(double));
+  hipMalloc(&A, n * n * sizeof(double));
 
   double h = 1.0 / 5.0;
 
-  cudaStream_t stream;
-  cudaStreamCreate(&stream);
+  hipStream_t stream;
+  hipStreamCreate(&stream);
 
-  dim3 nthreads(32, 8);
+  dim3 nthreads(128, 2);
   dim3 nblocks((n + nthreads.x - 1) / nthreads.x, (n + nthreads.y - 1) / nthreads.y);
 
   for (int isample = 0; isample < nsamples; ++isample) {
     auto timer = high_resolution_clock::now();
-    diffusion_kernel<<<nblocks, nthreads, 0, stream>>>(A_new, A, n, h);
-    cudaStreamSynchronize(stream);
+    hipLaunchKernelGGL(diffusion_kernel, nblocks, nthreads, 0, stream, A_new, A, n, h);
+    hipStreamSynchronize(stream);
     auto elapsed = high_resolution_clock::now() - timer;
     auto time_total = duration_cast<nano_double>(elapsed).count();
     times[isample] = time_total;
   }
 
-  cudaFree(A_new);
-  cudaFree(A);
+  hipFree(A_new);
+  hipFree(A);
 
-  cudaStreamDestroy(stream);
+  hipStreamDestroy(stream);
 }

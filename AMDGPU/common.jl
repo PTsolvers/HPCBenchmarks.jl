@@ -1,4 +1,9 @@
+using AMDGPU
+using BenchmarkTools
+using Statistics
+using Libdl
 using AxisKeys
+using Plots
 
 function judge_map(estimates)
     ek = keys(estimates) |> collect
@@ -16,3 +21,6 @@ function make_c_trial(nsamples)
     c_params.samples = nsamples
     return BenchmarkTools.Trial(c_params,c_times,c_gctimes,c_memory,c_allocs)
 end
+
+RESULTS = BenchmarkGroup()
+INPUTS  = Dict()

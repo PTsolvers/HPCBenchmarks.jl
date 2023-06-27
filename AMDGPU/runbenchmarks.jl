@@ -1,12 +1,3 @@
-using CUDA
-import CUDA: i32
-
-using BenchmarkTools
-using Statistics
-using Libdl
-
-RESULTS = BenchmarkGroup()
-
 include("common.jl")
 
 @info "host overhead"
@@ -17,3 +8,14 @@ include("memcopy.jl")
 
 @info "diffusion"
 include("diffusion_2d.jl")
+
+abstract type HPCBenchmark end
+
+_BENCHMARKS = Dict{Symbol, HPCBenchmark}
+
+
+function runbenchmarks(benchmarks=:all)
+    if benchmarks == :all
+        benchmarks = collect(keys(_BENCHMARKS))
+    end
+end
