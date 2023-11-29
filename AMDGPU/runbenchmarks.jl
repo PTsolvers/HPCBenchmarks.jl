@@ -1,7 +1,7 @@
 include("common.jl")
 
-@info "host overhead"
-include("host_overhead.jl")
+# @info "host overhead"
+# include("host_overhead.jl")
 
 @info "memcopy"
 include("memcopy.jl")
