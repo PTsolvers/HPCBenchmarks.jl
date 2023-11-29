@@ -1,5 +1,5 @@
 N_MILLISEC = 2
-C_SAMPLES  = 2000
+C_SAMPLES = 2000
 
 function sleep_kernel(ncycles)
     start = CUDA.clock(UInt64)
@@ -26,25 +26,25 @@ function run_julia_benchmarks(ncycles)
     return run(suite)
 end
 
-function run_c_benchmarks(lib,nsamples,ncycles)
+function run_c_benchmarks(lib, nsamples, ncycles)
     trial = make_c_trial(nsamples)
 
-    @ccall $sym(trial.times::Ptr{Cdouble},nsamples::Cint,ncycles::Cint)::Cvoid
+    @ccall $sym(trial.times::Ptr{Cdouble}, nsamples::Cint, ncycles::Cint)::Cvoid
 
     return trial
 end
 
-clock_rate = CUDA.attribute(device(),CUDA.DEVICE_ATTRIBUTE_CLOCK_RATE)
-ncycles    = N_MILLISEC*clock_rate
+clock_rate = CUDA.attribute(device(), CUDA.DEVICE_ATTRIBUTE_CLOCK_RATE)
+ncycles = N_MILLISEC * clock_rate
 
 group = run_julia_benchmarks(ncycles)
 
 # Add baseline C benchmark
-libext  = Sys.iswindows() ? "dll" : "so"
+libext = Sys.iswindows() ? "dll" : "so"
 libname = "host_overhead." * libext
 run(`hipcc -O3 -o $libname --shared -fPIC host_overhead.cu`)
 Libdl.dlopen("./$libname") do lib
-    group["reference"] = run_c_benchmarks(lib,C_SAMPLES,ncycles)
+    group["reference"] = run_c_benchmarks(lib, C_SAMPLES, ncycles)
 end
 
 RESULTS["host-overhead"] = group
