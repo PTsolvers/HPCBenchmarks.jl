@@ -60,7 +60,7 @@ group = BenchmarkGroup()
 # Compile C benchmark
 libext = Sys.iswindows() ? "dll" : "so"
 libname = "diffusion_3d." * libext
-run(`nvcc -O3 -o $libname --shared diffusion_3d.cu`)
+run(`nvcc -O3 -o $libname --shared -Xcompiler -fPIC diffusion_3d.cu`)
 
 Libdl.dlopen("./$libname") do lib
     for N in INPUTS["diffusion-3d"].n_range

@@ -43,7 +43,7 @@ group = BenchmarkGroup()
 # Compile C benchmark
 libext = Sys.iswindows() ? "dll" : "so"
 libname = "memcopy." * libext
-run(`nvcc -O3 -o $libname --shared memcopy.cu`)
+run(`nvcc -O3 -o $libname --shared -Xcompiler -fPIC memcopy.cu`)
 
 Libdl.dlopen("./$libname") do lib
     for N in INPUTS["memcopy"].n_range
