@@ -15,7 +15,7 @@ end
 
 INPUTS = Dict()
 
-INPUTS["atomic"] = (
+INPUTS["atomic_add"] = (
     c_samples=2000,
 )
 
@@ -88,7 +88,7 @@ end
 # Compile C benchmark
 libext = Sys.iswindows() ? "dll" : "so"
 libname = "atomic_add." * libext
-run(`nvcc -O3 -o $libname --shared -Xcompiler -fPIC atomic_add.cu`)
+run(`nvcc -O3 -o $libname --shared -Xcompiler -fPIC -arch=sm_60 atomic_add.cu`)
 
 Libdl.dlopen("./$libname") do lib
     group_n = BenchmarkGroup()
