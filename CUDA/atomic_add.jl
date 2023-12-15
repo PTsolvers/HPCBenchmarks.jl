@@ -3,21 +3,21 @@ using KernelAbstractions
 using BenchmarkTools
 using Libdl
 
-# function make_c_trial(nsamples)
-#     c_times = zeros(Float64, nsamples)
-#     c_gctimes = zeros(Float64, nsamples)
-#     c_memory = 0::Int64
-#     c_allocs = 0::Int64
-#     c_params = BenchmarkTools.DEFAULT_PARAMETERS
-#     c_params.samples = nsamples
-#     return BenchmarkTools.Trial(c_params, c_times, c_gctimes, c_memory, c_allocs)
-# end
+function make_c_trial(nsamples)
+    c_times = zeros(Float64, nsamples)
+    c_gctimes = zeros(Float64, nsamples)
+    c_memory = 0::Int64
+    c_allocs = 0::Int64
+    c_params = BenchmarkTools.DEFAULT_PARAMETERS
+    c_params.samples = nsamples
+    return BenchmarkTools.Trial(c_params, c_times, c_gctimes, c_memory, c_allocs)
+end
 
-# INPUTS = Dict()
+INPUTS = Dict()
 
-# INPUTS["atomic"] = (
-#     c_samples=2000,
-# )
+INPUTS["atomic"] = (
+    c_samples=2000,
+)
 
 function cuda_atomic_add!(target1, target2, source, indices)
     i = threadIdx().x + (blockIdx().x - 1) * gridDim().x
@@ -64,7 +64,7 @@ function run_julia_benchmarks(::Type{DAT}) where DAT
     end
 
     bm_ka = @benchmark begin
-        ka_atomic_add!(CUDABackend(), 256, $n)($target1, $target2, $source, $indices)
+        ka_atomic_add!($CUDABackend(), 256, $n)($target1, $target2, $source, $indices)
         KernelAbstractions.synchronize(CUDABackend())
     end
 
@@ -87,16 +87,14 @@ end
 
 # Compile C benchmark
 libext = Sys.iswindows() ? "dll" : "so"
-libname = "atomic." * libext
-run(`hipcc -O3 -o $libname --shared -fPIC atomic.cu`)
+libname = "atomic_add." * libext
+run(`nvcc -O3 -o $libname --shared -Xcompiler -fPIC atomic_add.cu`)
 
 Libdl.dlopen("./$libname") do lib
     group_n = BenchmarkGroup()
     jb = run_julia_benchmarks(Float32)
     group_n["julia"] = jb[1]
     group_n["julia-ka"] = jb[2]
-    group_n["reference"] = run_c_benchmarks(lib, INPUTS["atomic"].c_samples)
+    group_n["reference"] = run_c_benchmarks(lib, INPUTS["atomic_add"].c_samples)
     display(group_n)
 end
-
-
